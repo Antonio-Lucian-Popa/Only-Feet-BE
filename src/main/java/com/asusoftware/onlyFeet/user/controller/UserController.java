@@ -1,7 +1,8 @@
 package com.asusoftware.onlyFeet.user.controller;
 
 import com.asusoftware.onlyFeet.user.model.dto.UserProfileResponseDto;
-import com.asusoftware.onlyFeet.user.model.dto.UserRegisterRequestDto;
+import com.asusoftware.onlyFeet.user.model.dto.UserRegisterDto;
+import com.asusoftware.onlyFeet.user.model.dto.UserResponseDto;
 import com.asusoftware.onlyFeet.user.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -13,24 +14,25 @@ import java.util.UUID;
 @RequestMapping("/api/v1/users")
 @RequiredArgsConstructor
 public class UserController {
+
     private final UserService userService;
 
+    /**
+     * Înregistrare user nou (create user în Keycloak + local).
+     */
     @PostMapping("/register")
-    public ResponseEntity<UserProfileResponseDto> register(@RequestBody UserRegisterRequestDto request) {
+    public ResponseEntity<UserResponseDto> register(@RequestBody UserRegisterDto request) {
         return ResponseEntity.ok(userService.register(request));
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<UserProfileResponseDto> getUser(@PathVariable UUID id) {
-        return ResponseEntity.ok(userService.getProfile(id));
-    }
-
+    /**
+     * Obține profilul unui user (cu viewer optional pentru status abonament).
+     */
     @GetMapping("/{creatorId}/profile")
-    public ResponseEntity<UserProfileResponseDto> getCreatorProfile(
+    public ResponseEntity<UserProfileResponseDto> getUserProfile(
             @PathVariable UUID creatorId,
             @RequestParam(required = false) UUID viewerId
     ) {
         return ResponseEntity.ok(userService.getProfile(creatorId, viewerId));
     }
-
 }

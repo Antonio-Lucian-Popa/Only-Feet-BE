@@ -3,10 +3,13 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- users table
 CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    keycloak_id UUID NOT NULL UNIQUE,
     username VARCHAR(100) NOT NULL UNIQUE,
     email VARCHAR(150) NOT NULL UNIQUE,
-    password_hash TEXT NOT NULL,
-    is_creator BOOLEAN DEFAULT FALSE,
+    first_name VARCHAR(100),
+    last_name VARCHAR(100),
+    phone_number VARCHAR(50),
+    user_role TEXT CHECK (user_role IN ('USER', 'CREATOR', 'ADMIN')) NOT NULL,
     profile_picture_url TEXT,
     bio TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -47,8 +50,8 @@ CREATE TABLE payments (
     content_id UUID,
     amount NUMERIC NOT NULL CHECK (amount >= 0),
     payment_method TEXT,
-    type TEXT, -- 'subscription' | 'custom_content' | 'tip'
-    status TEXT, -- 'pending' | 'succeeded' | 'failed'
+    type TEXT CHECK (type IN ('subscription', 'custom_content', 'tip')),
+    status TEXT CHECK (status IN ('pending', 'succeeded', 'failed')),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_pay_user FOREIGN KEY (user_id) REFERENCES users(id)
@@ -71,7 +74,7 @@ CREATE TABLE content (
     CONSTRAINT fk_content_creator FOREIGN KEY (creator_id) REFERENCES users(id)
 );
 
--- reactions table (replaces likes)
+-- reactions table
 CREATE TABLE reactions (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL,

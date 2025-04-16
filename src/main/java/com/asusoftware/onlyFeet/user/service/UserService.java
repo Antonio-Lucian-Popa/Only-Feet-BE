@@ -1,80 +1,102 @@
 package com.asusoftware.onlyFeet.user.service;
 
+import com.asusoftware.onlyFeet.config.KeycloakService;
 import com.asusoftware.onlyFeet.subscription.repository.SubscriptionRepository;
 import com.asusoftware.onlyFeet.user.model.User;
-import com.asusoftware.onlyFeet.user.model.dto.UserProfileResponseDto;
-import com.asusoftware.onlyFeet.user.model.dto.UserRegisterRequestDto;
+import com.asusoftware.onlyFeet.user.model.UserRole;
+import com.asusoftware.onlyFeet.user.model.dto.*;
 import com.asusoftware.onlyFeet.user.repository.UserRepository;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.crypto.password.PasswordEncoder;
+import org.keycloak.representations.AccessTokenResponse;
+import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.NoSuchElementException;
 import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class UserService {
-    private final UserRepository userRepository;
-    private final SubscriptionRepository subscriptionRepository; // folosit pentru a verifica daca utilizatorul este abonat
-    private final PasswordEncoder passwordEncoder; // folosit pentru hash
 
-    public UserProfileResponseDto register(UserRegisterRequestDto request) {
-        if (userRepository.findByEmail(request.getEmail()).isPresent()) {
-            throw new IllegalArgumentException("Email already used.");
-        }
+    private final UserRepository userRepository;
+    private final SubscriptionRepository subscriptionRepository;
+    private final KeycloakService keycloakService;
+    private final ModelMapper mapper;
+
+    /**
+     * Înregistrare în Keycloak + salvare locală
+     */
+    @Transactional
+    public UserResponseDto register(UserRegisterDto dto) {
+        String keycloakId = keycloakService.createKeycloakUser(dto);
 
         User user = User.builder()
-                .username(request.getUsername())
-                .email(request.getEmail())
-                .passwordHash(passwordEncoder.encode(request.getPassword()))
-                .isCreator(request.isCreator())
-                .createdAt(LocalDateTime.now())
-                .updatedAt(LocalDateTime.now())
-                .isDeleted(false)
+                .id(UUID.randomUUID())
+                .keycloakId(keycloakId)
+                .email(dto.getEmail())
+                .username(dto.getUsername())
+                .firstName(dto.getFirstName())
+                .lastName(dto.getLastName())
+                .phoneNumber(dto.getPhoneNumber())
+                .userRole(UserRole.valueOf(dto.getUserRole()))
+                .createdAt(Instant.now())
+                .updatedAt(Instant.now())
                 .build();
 
-        User saved = userRepository.save(user);
-        return mapToResponse(saved);
+        userRepository.save(user);
+        return mapper.map(user, UserResponseDto.class);
     }
 
+    /**
+     * Autentificare cu Keycloak (obține token JWT)
+     */
+    public AccessTokenResponse login(LoginDto loginDto) {
+        return keycloakService.loginUser(loginDto);
+    }
+
+    /**
+     * Obține profilul fără viewer (fără info despre abonament)
+     */
     public UserProfileResponseDto getProfile(UUID userId) {
-        return getProfile(userId, null); // doar o redirectare
+        return getProfile(userId, null);
     }
 
+    /**
+     * Obține profilul complet, cu verificare abonament viewer → creator
+     */
     public UserProfileResponseDto getProfile(UUID creatorId, UUID viewerId) {
         User user = userRepository.findById(creatorId)
                 .orElseThrow(() -> new NoSuchElementException("User not found"));
 
-        boolean subscribed = false;
+        boolean subscribed = isViewerSubscribed(viewerId, creatorId);
 
-        if (viewerId != null && !viewerId.equals(creatorId)) {
-            subscribed = subscriptionRepository
-                    .findBySubscriberIdAndCreatorIdAndIsActiveTrue(viewerId, creatorId)
-                    .isPresent();
-        }
-
-        UserProfileResponseDto dto = new UserProfileResponseDto();
-        dto.setId(user.getId());
-        dto.setUsername(user.getUsername());
-        dto.setEmail(user.getEmail());
-        dto.setProfilePictureUrl(user.getProfilePictureUrl());
-        dto.setBio(user.getBio());
-        dto.setCreator(user.isCreator());
-        dto.setSubscribed(subscribed);
-
-        return dto;
+        return mapToUserProfileDto(user, subscribed);
     }
 
-    private UserProfileResponseDto mapToResponse(User user) {
-        UserProfileResponseDto dto = new UserProfileResponseDto();
-        dto.setId(user.getId());
-        dto.setUsername(user.getUsername());
-        dto.setEmail(user.getEmail());
-        dto.setProfilePictureUrl(user.getProfilePictureUrl());
-        dto.setBio(user.getBio());
-        dto.setCreator(user.isCreator());
-        return dto;
+    private UserProfileResponseDto mapToUserProfileDto(User user, boolean subscribed) {
+        return UserProfileResponseDto.builder()
+                .id(user.getId())
+                .username(user.getUsername())
+                .email(user.getEmail())
+                .profilePictureUrl(user.getProfilePictureUrl())
+                .bio(user.getBio())
+                .creator(user.getUserRole() == UserRole.CREATOR)
+                .subscribed(subscribed)
+                .build();
+    }
+
+
+    /**
+     * Verifică dacă viewer-ul este abonat la creator
+     */
+    private boolean isViewerSubscribed(UUID viewerId, UUID creatorId) {
+        if (viewerId == null || viewerId.equals(creatorId)) {
+            return false;
+        }
+        return subscriptionRepository
+                .findBySubscriberIdAndCreatorIdAndIsActiveTrue(viewerId, creatorId)
+                .isPresent();
     }
 }
