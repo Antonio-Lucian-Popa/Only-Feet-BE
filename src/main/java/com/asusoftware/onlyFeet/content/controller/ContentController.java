@@ -34,6 +34,12 @@ public class ContentController {
         return ResponseEntity.ok(contentService.getContentForViewer(creatorId, viewerId));
     }
 
+    @GetMapping("/categories")
+    public ResponseEntity<List<String>> getAllCategories() {
+        return ResponseEntity.ok(contentService.getAllCategories());
+    }
+
+
 
     @GetMapping("/creator/{creatorId}")
     public ResponseEntity<List<ContentResponseDto>> getByCreator(@PathVariable UUID creatorId) {

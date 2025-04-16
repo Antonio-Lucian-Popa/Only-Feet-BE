@@ -79,6 +79,10 @@ public class ContentService {
         }).toList();
     }
 
+    public List<String> getAllCategories() {
+        return contentRepository.findAllDistinctCategories();
+    }
+
 
     public List<ContentResponseDto> getByCreator(UUID creatorId) {
         return contentRepository.findByCreatorId(creatorId)
