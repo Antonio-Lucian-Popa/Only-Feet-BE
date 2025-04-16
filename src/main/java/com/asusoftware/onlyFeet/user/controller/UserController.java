@@ -24,4 +24,13 @@ public class UserController {
     public ResponseEntity<UserProfileResponseDto> getUser(@PathVariable UUID id) {
         return ResponseEntity.ok(userService.getProfile(id));
     }
+
+    @GetMapping("/{creatorId}/profile")
+    public ResponseEntity<UserProfileResponseDto> getCreatorProfile(
+            @PathVariable UUID creatorId,
+            @RequestParam(required = false) UUID viewerId
+    ) {
+        return ResponseEntity.ok(userService.getProfile(creatorId, viewerId));
+    }
+
 }

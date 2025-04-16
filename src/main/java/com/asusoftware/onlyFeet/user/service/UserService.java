@@ -1,5 +1,6 @@
 package com.asusoftware.onlyFeet.user.service;
 
+import com.asusoftware.onlyFeet.subscription.repository.SubscriptionRepository;
 import com.asusoftware.onlyFeet.user.model.User;
 import com.asusoftware.onlyFeet.user.model.dto.UserProfileResponseDto;
 import com.asusoftware.onlyFeet.user.model.dto.UserRegisterRequestDto;
@@ -16,6 +17,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class UserService {
     private final UserRepository userRepository;
+    private final SubscriptionRepository subscriptionRepository; // folosit pentru a verifica daca utilizatorul este abonat
     private final PasswordEncoder passwordEncoder; // folosit pentru hash
 
     public UserProfileResponseDto register(UserRegisterRequestDto request) {
@@ -37,10 +39,32 @@ public class UserService {
         return mapToResponse(saved);
     }
 
-    public UserProfileResponseDto getProfile(UUID id) {
-        return userRepository.findById(id)
-                .map(this::mapToResponse)
-                .orElseThrow(() -> new NoSuchElementException("User not found."));
+    public UserProfileResponseDto getProfile(UUID userId) {
+        return getProfile(userId, null); // doar o redirectare
+    }
+
+    public UserProfileResponseDto getProfile(UUID creatorId, UUID viewerId) {
+        User user = userRepository.findById(creatorId)
+                .orElseThrow(() -> new NoSuchElementException("User not found"));
+
+        boolean subscribed = false;
+
+        if (viewerId != null && !viewerId.equals(creatorId)) {
+            subscribed = subscriptionRepository
+                    .findBySubscriberIdAndCreatorIdAndIsActiveTrue(viewerId, creatorId)
+                    .isPresent();
+        }
+
+        UserProfileResponseDto dto = new UserProfileResponseDto();
+        dto.setId(user.getId());
+        dto.setUsername(user.getUsername());
+        dto.setEmail(user.getEmail());
+        dto.setProfilePictureUrl(user.getProfilePictureUrl());
+        dto.setBio(user.getBio());
+        dto.setCreator(user.isCreator());
+        dto.setSubscribed(subscribed);
+
+        return dto;
     }
 
     private UserProfileResponseDto mapToResponse(User user) {

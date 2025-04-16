@@ -12,4 +12,5 @@ public class UserProfileResponseDto {
     private String profilePictureUrl;
     private String bio;
     private boolean isCreator;
+    private boolean isSubscribed;
 }
