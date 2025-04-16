@@ -61,7 +61,7 @@ CREATE TABLE content (
     title TEXT,
     description TEXT,
     media_type TEXT CHECK (media_type IN ('image', 'video')),
-    media_url TEXT NOT NULL,
+    media_urls TEXT[] NOT NULL,
     visibility TEXT CHECK (visibility IN ('public', 'subscribers_only')),
     category TEXT,
     tags TEXT[],
@@ -71,15 +71,16 @@ CREATE TABLE content (
     CONSTRAINT fk_content_creator FOREIGN KEY (creator_id) REFERENCES users(id)
 );
 
--- likes table
-CREATE TABLE likes (
+-- reactions table (replaces likes)
+CREATE TABLE reactions (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL,
     content_id UUID NOT NULL,
+    type TEXT CHECK (type IN ('LOVE', 'FIRE', 'WOW', 'DISGUST')),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT fk_like_user FOREIGN KEY (user_id) REFERENCES users(id),
-    CONSTRAINT fk_like_content FOREIGN KEY (content_id) REFERENCES content(id),
-    CONSTRAINT uq_like UNIQUE (user_id, content_id) -- un user like o singură dată
+    CONSTRAINT fk_reaction_user FOREIGN KEY (user_id) REFERENCES users(id),
+    CONSTRAINT fk_reaction_content FOREIGN KEY (content_id) REFERENCES content(id),
+    CONSTRAINT uq_reaction UNIQUE (user_id, content_id)
 );
 
 -- comments table
