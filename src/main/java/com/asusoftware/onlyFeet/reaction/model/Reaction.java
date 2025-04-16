@@ -1,4 +1,4 @@
-package com.asusoftware.onlyFeet.content.model;
+package com.asusoftware.onlyFeet.reaction.model;
 
 import jakarta.persistence.*;
 import lombok.*;
@@ -7,22 +7,28 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "likes")
+@Table(name = "reactions", uniqueConstraints = {
+        @UniqueConstraint(columnNames = {"user_id", "content_id"})
+})
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Like {
+public class Reaction {
+
     @Id
     @GeneratedValue
     private UUID id;
 
-    @Column(nullable = false)
+    @Column(name = "user_id", nullable = false)
     private UUID userId;
 
-    @Column(nullable = false)
+    @Column(name = "content_id", nullable = false)
     private UUID contentId;
+
+    @Enumerated(EnumType.STRING)
+    private ReactionType type;
 
     private LocalDateTime createdAt;
 
@@ -31,3 +37,4 @@ public class Like {
         createdAt = LocalDateTime.now();
     }
 }
+

@@ -7,9 +7,11 @@ import com.asusoftware.onlyFeet.content.model.dto.ContentCreateRequestDto;
 import com.asusoftware.onlyFeet.content.model.dto.ContentDetailsDto;
 import com.asusoftware.onlyFeet.content.model.dto.ContentResponseDto;
 import com.asusoftware.onlyFeet.content.repository.ContentRepository;
-import com.asusoftware.onlyFeet.content.repository.LikeRepository;
 import com.asusoftware.onlyFeet.rating.model.Rating;
 import com.asusoftware.onlyFeet.rating.repository.RatingRepository;
+import com.asusoftware.onlyFeet.reaction.model.ReactionType;
+import com.asusoftware.onlyFeet.reaction.repository.ReactionRepository;
+
 import com.asusoftware.onlyFeet.subscription.repository.SubscriptionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -28,7 +30,7 @@ public class ContentService {
     private final SubscriptionRepository subscriptionRepository;
     private final FileStorageService fileStorageService;
     private final RatingRepository ratingRepository;
-    private final LikeRepository likeRepository;
+    private final ReactionRepository reactionRepository;
     private final CommentRepository commentRepository;
 
     public ContentResponseDto upload(List<MultipartFile> files, ContentCreateRequestDto request) {
@@ -91,8 +93,8 @@ public class ContentService {
         double avgRating = ratings.stream().mapToInt(Rating::getScore).average().orElse(0);
         int totalRatings = ratings.size();
 
-        // Likes
-        int likeCount = likeRepository.countByContentId(contentId);
+        // Reacții ❤️ (LOVE)
+        int likeCount = reactionRepository.countByContentIdAndType(contentId, ReactionType.LOVE);
 
         // Comments
         List<CommentDto> comments = commentRepository.findByContentId(contentId).stream()
@@ -125,7 +127,6 @@ public class ContentService {
 
         return dto;
     }
-
 
     public List<String> getAllCategories() {
         return contentRepository.findAllDistinctCategories();
