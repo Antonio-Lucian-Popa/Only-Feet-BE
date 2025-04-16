@@ -1,4 +1,7 @@
 spring:
+  web:
+    resources:
+      static-locations: file:uploads/
   datasource:
     url: jdbc:postgresql://antonio-dev.go.ro:16433/onlyfeetdb
     username: postgres

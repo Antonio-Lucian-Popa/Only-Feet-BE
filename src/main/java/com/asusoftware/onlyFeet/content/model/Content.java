@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -30,7 +31,7 @@ public class Content {
     private String mediaType; // 'image' | 'video'
 
     @Column(nullable = false)
-    private String mediaUrl;
+    private List<String> mediaUrls;
 
     private String visibility; // 'public' | 'subscribers_only'
 
