@@ -3,7 +3,7 @@ spring:
     resources:
       static-locations: file:uploads/
   datasource:
-    url: jdbc:postgresql://antonio-dev.go.ro:16433/onlyfeetdb
+    url: jdbc:postgresql://antonio-dev.go.ro:15772/onlyfeetdb
     username: postgres
     password: password
     driver-class-name: org.postgresql.Driver
@@ -50,3 +50,4 @@ stripe:
   api-key: sk_test_xxxx  # cheia secretă
   success-url: https://onlyfeet.ro/payment/success?session_id={CHECKOUT_SESSION_ID}
   cancel-url: https://onlyfeet.ro/payment/cancel
+  webhook-secret: whsec_xxxx  # secretul webhook-ului
