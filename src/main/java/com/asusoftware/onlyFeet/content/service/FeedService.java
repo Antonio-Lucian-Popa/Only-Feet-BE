@@ -22,66 +22,71 @@ public class FeedService {
     private final SubscriptionRepository subscriptionRepository;
 
     public List<ContentFeedDto> getFeed(UUID viewerId, String sort, String category, int page, int size) {
+        // 1. Fetch all content
         List<Content> allContent = contentRepository.findAll();
 
-        // ✅ Filtru după categorie (dacă e specificat)
+        // 2. Filter by category if needed
         if (category != null && !category.isBlank()) {
             allContent = allContent.stream()
                     .filter(c -> category.equalsIgnoreCase(c.getCategory()))
                     .toList();
         }
 
-        Map<UUID, Double> ratingAvgMap = new HashMap<>();
-        Map<UUID, Integer> ratingCountMap = new HashMap<>();
-
-        for (Content c : allContent) {
-            List<Rating> ratings = ratingRepository.findByContentId(c.getId());
-            double avg = ratings.stream().mapToInt(Rating::getScore).average().orElse(0);
-            ratingAvgMap.put(c.getId(), avg);
-            ratingCountMap.put(c.getId(), ratings.size());
-        }
-
-        Set<UUID> creatorIdsSubscribed = subscriptionRepository.findBySubscriberId(viewerId).stream()
+        // 3. Preload subscriptions for viewer
+        Set<UUID> subscribedCreatorIds = subscriptionRepository.findBySubscriberId(viewerId).stream()
                 .filter(Subscription::isActive)
                 .map(Subscription::getCreatorId)
                 .collect(Collectors.toSet());
 
-        List<ContentFeedDto> result = allContent.stream()
-                .filter(content -> {
-                    if ("public".equals(content.getVisibility())) return true;
-                    return creatorIdsSubscribed.contains(content.getCreatorId());
-                })
+        // 4. Preload all ratings per content
+        Map<UUID, List<Rating>> ratingsMap = new HashMap<>();
+        for (Content content : allContent) {
+            ratingsMap.put(content.getId(), ratingRepository.findByContentId(content.getId()));
+        }
+
+        // 5. Map to DTOs
+        List<ContentFeedDto> feed = allContent.stream()
+                .filter(content -> isAccessibleToViewer(content, subscribedCreatorIds))
                 .map(content -> {
-                    boolean accessible = content.getVisibility().equals("public") ||
-                            creatorIdsSubscribed.contains(content.getCreatorId());
+                    boolean accessible = isAccessibleToViewer(content, subscribedCreatorIds);
+                    List<Rating> ratings = ratingsMap.getOrDefault(content.getId(), List.of());
+
+                    double avgRating = ratings.stream().mapToInt(Rating::getScore).average().orElse(0);
+                    int totalRatings = ratings.size();
 
                     ContentFeedDto dto = new ContentFeedDto();
                     dto.setId(content.getId());
                     dto.setCreatorId(content.getCreatorId());
                     dto.setTitle(accessible ? content.getTitle() : "🔒 Abonament necesar");
                     dto.setDescription(accessible ? content.getDescription() : null);
-                    dto.setMediaUrl(accessible ? content.getMediaUrl() : "/assets/blurred-thumbnail.jpg");
+                    dto.setMediaUrl(accessible
+                            ? (content.getMediaUrls() != null && !content.getMediaUrls().isEmpty() ? content.getMediaUrls().get(0) : null)
+                            : "/assets/blurred-thumbnail.jpg");
                     dto.setAccessible(accessible);
                     dto.setCreatedAt(content.getCreatedAt());
-                    dto.setRatingAvg(ratingAvgMap.getOrDefault(content.getId(), 0.0));
-                    dto.setRatingCount(ratingCountMap.getOrDefault(content.getId(), 0));
+                    dto.setRatingAvg(avgRating);
+                    dto.setRatingCount(totalRatings);
                     return dto;
                 })
                 .sorted((a, b) -> {
                     if ("popular".equalsIgnoreCase(sort)) {
                         return Double.compare(b.getRatingAvg(), a.getRatingAvg());
-                    } else {
-                        return b.getCreatedAt().compareTo(a.getCreatedAt());
                     }
+                    return b.getCreatedAt().compareTo(a.getCreatedAt());
                 })
                 .toList();
 
-        // ✅ Paginare simplă (offset)
-        int fromIndex = Math.min(page * size, result.size());
-        int toIndex = Math.min(fromIndex + size, result.size());
+        // 6. Pagination
+        int fromIndex = Math.min(page * size, feed.size());
+        int toIndex = Math.min(fromIndex + size, feed.size());
 
-        return result.subList(fromIndex, toIndex);
+        return feed.subList(fromIndex, toIndex);
     }
+
+    private boolean isAccessibleToViewer(Content content, Set<UUID> subscribedCreatorIds) {
+        return "public".equals(content.getVisibility()) || subscribedCreatorIds.contains(content.getCreatorId());
+    }
+
 
 }
 
