@@ -12,9 +12,10 @@ public class ContentResponseDto {
     private String title;
     private String description;
     private String mediaType;
-    private String mediaUrl;
+    private String mediaUrl; // poate fi blurred dacă e blocat
     private String visibility;
     private String category;
     private String[] tags;
     private LocalDateTime createdAt;
+    private boolean isAccessible; // << important
 }
